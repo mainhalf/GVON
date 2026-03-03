@@ -1,0 +1,5 @@
+{
+  "name": "全球虚拟观测网络 (Global Virtual Observation Network)",
+  "description": "一个全球地基网络数据平台，提供地面观测站点的数字孪生展示、数据管理、运行监控及统计分析功能。",
+  "requestFramePermissions": []
+}
