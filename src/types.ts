@@ -93,3 +93,16 @@ export interface PurchasedData {
   station_name?: string;
   instrument_name?: string;
 }
+
+export interface VerificationRequest {
+  id: number;
+  user_id: number;
+  username: string;
+  user_role: 'partner' | 'paid';
+  organization?: string;
+  device_id: string;
+  id_photo_url: string;
+  business_license_url?: string;
+  status: 'pending' | 'approved' | 'rejected';
+  submit_time: string;
+}

@@ -49,7 +49,17 @@ import {
   QrCode,
   ArrowRight,
   Trash2,
-  Receipt
+  Receipt,
+  Mail,
+  Building2,
+  UserPlus,
+  LogIn,
+  Eye,
+  EyeOff,
+  Grid3X3,
+  UserCheck,
+  Check,
+  Ban
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -58,7 +68,7 @@ import {
 } from 'recharts';
 import * as d3 from 'd3-geo';
 import { cn } from './lib/utils';
-import { User, Network, SubNetwork, Station, Instrument, ObservationData, PurchasedData, StationDataProduct } from './types';
+import { User, Network, SubNetwork, Station, Instrument, ObservationData, PurchasedData, StationDataProduct, VerificationRequest } from './types';
 
 // --- Components ---
 
@@ -134,16 +144,33 @@ const StatCard = ({ label, value, icon: Icon, trend, color }: { label: string, v
 export default function App() {
   const [user, setUser] = useState<User | null>({
     id: 1,
-    username: 'AdminUser',
+    username: 'admin',
     role: 'admin',
-    organization: 'SCDI 监测中心'
+    organization: '总管理机构'
   });
+  const [isAuthMode, setIsAuthMode] = useState<'login' | 'register'>('login');
+  const [registerType, setRegisterType] = useState<'regular' | 'partner'>('regular');
   const [activeTab, setActiveTab] = useState('map');
   const [mgmtTab, setMgmtTab] = useState('overview');
   const [profileTab, setProfileTab] = useState('favorites');
   const [stationDetailTab, setStationDetailTab] = useState('info');
-  const [favorites, setFavorites] = useState<number[]>([]);
-  const [cart, setCart] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<number[]>([1, 3, 5]);
+  const [cart, setCart] = useState<any[]>([
+    {
+      station_id: 1,
+      station_name: '北京奥体中心站',
+      param_name: '逐小时高精度资料包',
+      time_range: '最近30天',
+      price: 99.00
+    },
+    {
+      station_id: 4,
+      station_name: '瓦里关山站',
+      param_name: '逐日统计资料包',
+      time_range: '最近1年',
+      price: 299.00
+    }
+  ]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLegendExpanded, setIsLegendExpanded] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -170,10 +197,69 @@ export default function App() {
   const [expandedRegions, setExpandedRegions] = useState<string[]>(['global']);
   const [isRegionMenuOpen, setIsRegionMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [isAddGridModalOpen, setIsAddGridModalOpen] = useState(false);
+  const [verificationFilter, setVerificationFilter] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [verificationRequests, setVerificationRequests] = useState<VerificationRequest[]>([
+    {
+      id: 1,
+      user_id: 101,
+      username: 'tech_pioneer',
+      user_role: 'partner',
+      organization: '未来科技研究院',
+      device_id: 'DEV-8829-X1',
+      id_photo_url: 'https://picsum.photos/seed/id1/400/300',
+      business_license_url: 'https://picsum.photos/seed/license1/400/300',
+      status: 'pending',
+      submit_time: '2024-03-04 14:20'
+    },
+    {
+      id: 2,
+      user_id: 102,
+      username: 'sensor_master',
+      user_role: 'paid',
+      device_id: 'DEV-1102-S2',
+      id_photo_url: 'https://picsum.photos/seed/id2/400/300',
+      status: 'pending',
+      submit_time: '2024-03-04 16:45'
+    },
+    {
+      id: 3,
+      user_id: 103,
+      username: 'eco_monitor',
+      user_role: 'partner',
+      organization: '绿色生态协会',
+      device_id: 'DEV-5541-E9',
+      id_photo_url: 'https://picsum.photos/seed/id3/400/300',
+      business_license_url: 'https://picsum.photos/seed/license3/400/300',
+      status: 'pending',
+      submit_time: '2024-03-05 09:10'
+    }
+  ]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStationIds, setSelectedStationIds] = useState<number[]>([]);
+  const [selectedGridIds, setSelectedGridIds] = useState<string[]>([]);
+  const [selectedVerificationIds, setSelectedVerificationIds] = useState<number[]>([]);
+  const [selectedFavoriteIds, setSelectedFavoriteIds] = useState<number[]>([]);
+  const [selectedOrderIds, setSelectedOrderIds] = useState<number[]>([]);
+  const [selectedCartIndices, setSelectedCartIndices] = useState<number[]>([0, 1]);
   const [isSearchResultsOpen, setIsSearchResultsOpen] = useState(false);
   const [focusedStation, setFocusedStation] = useState<Station | null>(null);
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'checkout' | 'payment' | 'success'>('cart');
+
+  // Reset map view to original state
+  const resetMapView = () => {
+    setMapTransform({ x: 0, y: 0, k: 1 });
+    setActivePopupStation(null);
+    setFocusedStation(null);
+    setSelectedStation(null);
+  };
+
+  // Refresh map when network changes
+  useEffect(() => {
+    resetMapView();
+  }, [selectedNetworkId, selectedRegion]);
+
   const [notifications] = useState([
     { id: 1, title: '系统更新', content: 'GVON 平台已升级至 v2.5 版本，新增多维度地区筛选功能。', time: '10分钟前', type: 'info' },
     { id: 2, title: '数据购买成功', content: '您购买的“北京奥体中心站-逐小时高精度包”已准备就绪。', time: '2小时前', type: 'success' },
@@ -303,25 +389,6 @@ export default function App() {
     };
     fetchData();
 
-    const login = async () => {
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: 'user1', password: 'pass123' })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setUser({ ...data, role: 'admin' });
-        } else {
-          console.error("Login failed with status:", res.status);
-        }
-      } catch (e) {
-        console.error("Login failed", e);
-      }
-    };
-    login();
-
     return () => {
       try {
         controller.abort("unmount");
@@ -403,15 +470,6 @@ export default function App() {
       setIsPurchasing(false);
     }
   };
-
-  if (!user) return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 text-slate-900">
-      <div className="flex flex-col items-center gap-4">
-        <Globe className="w-12 h-12 text-emerald-600 animate-pulse" />
-        <p className="text-slate-500 font-medium">正在初始化全球虚拟观测网络...</p>
-      </div>
-    </div>
-  );
 
   const regions = [
     {
@@ -575,7 +633,15 @@ export default function App() {
           >
             <g transform={`translate(${mapTransform.x}, ${mapTransform.y}) scale(${mapTransform.k})`}>
               {/* Ocean Background */}
-              <rect x={-width * 10} y={-height * 10} width={width * 20} height={height * 20} fill="#f8fafc" />
+              <rect 
+                x={-width * 10} y={-height * 10} 
+                width={width * 20} height={height * 20} 
+                fill="#f8fafc" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  resetMapView();
+                }}
+              />
               
               {/* Base World Outline (Permanent Fallback) */}
               <path 
@@ -615,7 +681,11 @@ export default function App() {
                       fill="#f1f5f9"
                       stroke="#cbd5e1"
                       strokeWidth={0.5 / mapTransform.k}
-                      className="transition-colors duration-300 hover:fill-slate-200"
+                      className="transition-colors duration-300 hover:fill-slate-200 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        resetMapView();
+                      }}
                     />
                     {/* Administrative Labels (Visible at higher zoom) */}
                     {mapTransform.k > 2 && feature.properties?.name && (
@@ -1053,7 +1123,7 @@ export default function App() {
   };
 
   const renderCartPage = () => {
-    const totalAmount = cart.reduce((sum, item) => sum + item.price, 0);
+    const totalAmount = cart.reduce((sum, item, idx) => selectedCartIndices.includes(idx) ? sum + item.price : sum, 0);
 
     return (
       <div className="h-full w-full bg-slate-50 overflow-y-auto custom-scrollbar p-8">
@@ -1126,8 +1196,45 @@ export default function App() {
                   ) : (
                     <>
                       <div className="divide-y divide-slate-50">
+                        <div className="p-4 px-8 bg-slate-50/30 flex items-center gap-4">
+                          <button 
+                            onClick={() => {
+                              if (selectedCartIndices.length === cart.length) {
+                                setSelectedCartIndices([]);
+                              } else {
+                                setSelectedCartIndices(cart.map((_, i) => i));
+                              }
+                            }}
+                            className={cn(
+                              "w-5 h-5 rounded-md border flex items-center justify-center transition-all",
+                              selectedCartIndices.length === cart.length 
+                                ? "bg-emerald-500 border-emerald-500 text-white" 
+                                : "bg-white border-slate-200 text-transparent"
+                            )}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">全选</span>
+                        </div>
                         {cart.map((item, idx) => (
                           <div key={idx} className="p-8 flex items-center gap-6 hover:bg-slate-50/50 transition-colors group">
+                            <button 
+                              onClick={() => {
+                                if (selectedCartIndices.includes(idx)) {
+                                  setSelectedCartIndices(prev => prev.filter(i => i !== idx));
+                                } else {
+                                  setSelectedCartIndices(prev => [...prev, idx]);
+                                }
+                              }}
+                              className={cn(
+                                "w-6 h-6 rounded-lg border flex items-center justify-center transition-all shrink-0",
+                                selectedCartIndices.includes(idx)
+                                  ? "bg-emerald-500 border-emerald-500 text-white"
+                                  : "bg-white border-slate-200 text-transparent hover:border-emerald-300"
+                              )}
+                            >
+                              <Check className="w-4 h-4" />
+                            </button>
                             <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
                               <Database className="w-8 h-8" />
                             </div>
@@ -1146,7 +1253,10 @@ export default function App() {
                             <div className="text-right">
                               <p className="text-xl font-black text-slate-900">¥{item.price}</p>
                               <button 
-                                onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))}
+                                onClick={() => {
+                                  setCart(prev => prev.filter((_, i) => i !== idx));
+                                  setSelectedCartIndices(prev => prev.filter(i => i !== idx).map(i => i > idx ? i - 1 : i));
+                                }}
                                 className="mt-2 p-2 text-slate-300 hover:text-rose-500 transition-colors"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1740,10 +1850,215 @@ export default function App() {
     </div>
   );
 
+  const renderAuthPage = () => {
+    return (
+      <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-4 font-sans">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-emerald-500/5 rounded-full blur-[120px]" />
+          <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-500/5 rounded-full blur-[120px]" />
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md bg-white rounded-[40px] shadow-2xl border border-slate-100 overflow-hidden relative z-10"
+        >
+          <div className="p-10">
+            <div className="flex flex-col items-center mb-10">
+              <div className="w-16 h-16 bg-emerald-600 rounded-2xl flex items-center justify-center shadow-xl shadow-emerald-600/20 mb-6">
+                <Globe className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">GVON 全球虚拟观测网络</h1>
+              <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Global Virtual Observation Network</p>
+            </div>
+
+            <div className="flex p-1 bg-slate-100 rounded-2xl mb-8">
+              <button 
+                onClick={() => setIsAuthMode('login')}
+                className={cn(
+                  "flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
+                  isAuthMode === 'login' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                )}
+              >
+                登录
+              </button>
+              <button 
+                onClick={() => setIsAuthMode('register')}
+                className={cn(
+                  "flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all",
+                  isAuthMode === 'register' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                )}
+              >
+                注册
+              </button>
+            </div>
+
+            <AnimatePresence mode="wait">
+              {isAuthMode === 'login' ? (
+                <motion.div
+                  key="login"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-6"
+                >
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">电子邮箱 / 用户名</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="example@gvon.com" 
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">密码</label>
+                      <button className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hover:text-emerald-700">忘记密码?</button>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input 
+                        type="password" 
+                        placeholder="••••••••" 
+                        className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/5 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => setUser({ id: 1, username: 'DemoUser', role: 'regular', organization: '个人用户' })}
+                    className="w-full py-4 bg-slate-900 text-white rounded-[24px] font-black text-sm shadow-xl shadow-slate-900/20 flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    立即登录
+                    <LogIn className="w-5 h-5" />
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="register"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  <div className="grid grid-cols-2 gap-3 mb-6">
+                    <button 
+                      onClick={() => setRegisterType('regular')}
+                      className={cn(
+                        "p-4 border-2 rounded-2xl flex flex-col items-center gap-2 transition-all",
+                        registerType === 'regular' ? "border-emerald-500 bg-emerald-50/50" : "border-slate-100 hover:border-slate-200"
+                      )}
+                    >
+                      <UserIcon className={cn("w-6 h-6", registerType === 'regular' ? "text-emerald-600" : "text-slate-400")} />
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", registerType === 'regular' ? "text-emerald-700" : "text-slate-500")}>普通用户</span>
+                    </button>
+                    <button 
+                      onClick={() => setRegisterType('partner')}
+                      className={cn(
+                        "p-4 border-2 rounded-2xl flex flex-col items-center gap-2 transition-all",
+                        registerType === 'partner' ? "border-blue-500 bg-blue-50/50" : "border-slate-100 hover:border-slate-200"
+                      )}
+                    >
+                      <Building2 className={cn("w-6 h-6", registerType === 'partner' ? "text-blue-600" : "text-slate-400")} />
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", registerType === 'partner' ? "text-blue-700" : "text-slate-500")}>合作用户</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">用户名</label>
+                      <div className="relative">
+                        <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="text" 
+                          placeholder="您的姓名或昵称" 
+                          className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">电子邮箱</label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="email" 
+                          placeholder="example@gvon.com" 
+                          className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
+                        />
+                      </div>
+                    </div>
+                    {registerType === 'partner' && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">所属机构</label>
+                        <div className="relative">
+                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input 
+                            type="text" 
+                            placeholder="公司、学校或研究机构名称" 
+                            className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">设置密码</label>
+                      <div className="relative">
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input 
+                          type="password" 
+                          placeholder="至少 8 位字符" 
+                          className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold focus:outline-none focus:border-emerald-500 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 px-1">
+                    <input type="checkbox" className="mt-1 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" />
+                    <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                      我已阅读并同意 <button className="text-emerald-600 font-bold">《服务协议》</button> 和 <button className="text-emerald-600 font-bold">《隐私政策》</button>
+                    </p>
+                  </div>
+
+                  <button 
+                    onClick={() => setUser({ 
+                      id: Date.now(), 
+                      username: 'NewUser', 
+                      role: registerType, 
+                      organization: registerType === 'partner' ? '待完善机构' : '个人用户' 
+                    })}
+                    className={cn(
+                      "w-full py-4 text-white rounded-[24px] font-black text-sm shadow-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all",
+                      registerType === 'partner' ? "bg-blue-600 shadow-blue-600/20" : "bg-emerald-600 shadow-emerald-600/20"
+                    )}
+                  >
+                    创建账户
+                    <UserPlus className="w-5 h-5" />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+          <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+              © 2026 GVON 全球虚拟观测网络 · 版权所有
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  };
+
   const renderManagementCenter = () => {
     const mgmtItems = [
       { id: 'overview', label: '运行概览', icon: LayoutDashboard },
       { id: 'stations', label: '站点管理', icon: MapPin },
+      ...(user?.role === 'admin' ? [
+        { id: 'grid', label: '网格管理', icon: Grid3X3 },
+        { id: 'users', label: '用户管理', icon: UserCheck },
+      ] : []),
       { id: 'revenue', label: '收益管理', icon: Wallet },
       { id: 'account', label: '账户管理', icon: UserCog },
       { id: 'favorites', label: '我的收藏', icon: Heart },
@@ -1803,26 +2118,312 @@ export default function App() {
                       添加新站点
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 gap-4">
-                    {stations.slice(0, 5).map(s => (
-                      <div key={s.id} className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all shadow-sm">
-                        <div className="flex items-center gap-4">
-                          <div className="p-3 bg-slate-50 rounded-xl text-emerald-600 border border-slate-100">
-                            <MapPin className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900">{s.name_cn}</p>
-                            <p className="text-xs text-slate-500 font-medium">{s.network_name_cn} · {s.country}</p>
-                          </div>
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="p-4 w-12 text-center">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              checked={selectedStationIds.length === stations.length && stations.length > 0}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedStationIds(stations.map(s => s.id));
+                                } else {
+                                  setSelectedStationIds([]);
+                                }
+                              }}
+                            />
+                          </th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">站点名称</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">所属网络</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">国家/地区</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">状态</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {stations.slice(0, 10).map(s => (
+                          <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="p-4 text-center">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                checked={selectedStationIds.includes(s.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedStationIds(prev => [...prev, s.id]);
+                                  } else {
+                                    setSelectedStationIds(prev => prev.filter(id => id !== s.id));
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-slate-100 rounded-lg text-emerald-600">
+                                  <MapPin className="w-4 h-4" />
+                                </div>
+                                <span className="font-bold text-slate-900 text-sm">{s.name_cn}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-xs font-medium text-slate-600">{s.network_name_cn}</td>
+                            <td className="p-4 text-xs font-medium text-slate-600">{s.country}</td>
+                            <td className="p-4">
+                              <span className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full border border-emerald-100">运行中</span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
+                                <Settings className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {mgmtTab === 'grid' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <Grid3X3 className="w-5 h-5 text-blue-600" />
+                      网格管理
+                    </h3>
+                    <button 
+                      onClick={() => setIsAddGridModalOpen(true)}
+                      className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-blue-600/20 flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      划分新网格
+                    </button>
+                  </div>
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="p-4 w-12 text-center">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              onChange={(e) => {
+                                const gridIds = ['GRID-CN-HB', 'GRID-CN-HD', 'GRID-CN-HN', 'GRID-CN-XB'];
+                                if (e.target.checked) {
+                                  setSelectedGridIds(gridIds);
+                                } else {
+                                  setSelectedGridIds([]);
+                                }
+                              }}
+                            />
+                          </th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">网格名称</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">网格代码</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">站点数量</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">状态</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {[
+                          { name: '华北平原网格', code: 'GRID-CN-HB', stations: 12, status: 'active' },
+                          { name: '长江三角洲网格', code: 'GRID-CN-HD', stations: 24, status: 'active' },
+                          { name: '珠江三角洲网格', code: 'GRID-CN-HN', stations: 18, status: 'active' },
+                          { name: '青藏高原高寒网格', code: 'GRID-CN-XB', stations: 5, status: 'warning' },
+                        ].map((grid, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="p-4 text-center">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                checked={selectedGridIds.includes(grid.code)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedGridIds(prev => [...prev, grid.code]);
+                                  } else {
+                                    setSelectedGridIds(prev => prev.filter(id => id !== grid.code));
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                                  <Layers className="w-4 h-4" />
+                                </div>
+                                <span className="font-bold text-slate-900 text-sm">{grid.name}</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-xs font-mono font-bold text-slate-500">{grid.code}</td>
+                            <td className="p-4 text-xs font-bold text-slate-600">{grid.stations} 个站点</td>
+                            <td className="p-4">
+                              <span className={cn(
+                                "px-2 py-1 rounded-full text-[10px] font-bold border",
+                                grid.status === 'active' ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-amber-50 text-amber-600 border-amber-100"
+                              )}>
+                                {grid.status === 'active' ? '运行中' : '需维护'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right">
+                              <button className="text-xs font-bold text-blue-600 hover:underline">详情配置</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {mgmtTab === 'users' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <UserCheck className="w-5 h-5 text-emerald-600" />
+                      用户实名审核
+                    </h3>
+                    <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                      <button 
+                        onClick={() => setVerificationFilter('pending')}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                          verificationFilter === 'pending' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                        )}
+                      >
+                        待审核
+                      </button>
+                      <button 
+                        onClick={() => setVerificationFilter('approved')}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                          verificationFilter === 'approved' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                        )}
+                      >
+                        已通过
+                      </button>
+                      <button 
+                        onClick={() => setVerificationFilter('rejected')}
+                        className={cn(
+                          "px-4 py-1.5 rounded-lg text-[10px] font-bold transition-all",
+                          verificationFilter === 'rejected' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                        )}
+                      >
+                        已驳回
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-slate-200">
+                          <th className="p-4 w-12 text-center">
+                            <input 
+                              type="checkbox" 
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              onChange={(e) => {
+                                const filtered = verificationRequests.filter(r => r.status === verificationFilter);
+                                if (e.target.checked) {
+                                  setSelectedVerificationIds(filtered.map(r => r.id));
+                                } else {
+                                  setSelectedVerificationIds([]);
+                                }
+                              }}
+                            />
+                          </th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">用户信息</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">所属机构</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">设备 ID</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">申请时间</th>
+                          <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {verificationRequests.filter(r => r.status === verificationFilter).map(req => (
+                          <tr key={req.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="p-4 text-center">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                checked={selectedVerificationIds.includes(req.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedVerificationIds(prev => [...prev, req.id]);
+                                  } else {
+                                    setSelectedVerificationIds(prev => prev.filter(id => id !== req.id));
+                                  }
+                                }}
+                              />
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                                  <UserIcon className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <p className="font-bold text-slate-900 text-sm">@{req.username}</p>
+                                  <span className={cn(
+                                    "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider",
+                                    req.user_role === 'partner' ? "bg-blue-100 text-blue-600" : "bg-amber-100 text-amber-600"
+                                  )}>
+                                    {req.user_role === 'partner' ? '合作' : '付费'}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-4 text-xs font-medium text-slate-600">{req.organization || '个人'}</td>
+                            <td className="p-4">
+                              <span className="text-[10px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">{req.device_id}</span>
+                            </td>
+                            <td className="p-4 text-xs font-medium text-slate-500">{req.submit_time}</td>
+                            <td className="p-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button 
+                                  onClick={() => setPreviewPhoto(req.id_photo_url)}
+                                  className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                  title="查看证件"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                {req.status === 'pending' && (
+                                  <>
+                                    <button 
+                                      onClick={() => {
+                                        setVerificationRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'approved' } : r));
+                                        alert(`已通过 @${req.username} 的审核`);
+                                      }}
+                                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                                      title="通过"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        setVerificationRequests(prev => prev.map(r => r.id === req.id ? { ...r, status: 'rejected' } : r));
+                                        alert(`已驳回 @${req.username} 的申请`);
+                                      }}
+                                      className="p-2 text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                      title="驳回"
+                                    >
+                                      <Ban className="w-4 h-4" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    
+                    {verificationRequests.filter(r => r.status === verificationFilter).length === 0 && (
+                      <div className="py-20 text-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <CheckCircle className="w-8 h-8 text-slate-300" />
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-full border border-emerald-100">运行中</span>
-                          <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
-                            <Settings className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <p className="text-slate-400 font-bold">暂无{verificationFilter === 'pending' ? '待审核' : verificationFilter === 'approved' ? '已通过' : '已驳回'}的申请</p>
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
@@ -1915,42 +2516,75 @@ export default function App() {
                     <Heart className="w-5 h-5 text-rose-500" />
                     我的收藏
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     {favorites.length === 0 ? (
-                      <div className="col-span-full p-12 text-center border border-dashed border-slate-200 rounded-3xl text-slate-400 bg-white">
+                      <div className="p-20 text-center text-slate-400 font-bold">
                         暂无收藏站点
                       </div>
                     ) : (
-                      stations.filter(s => favorites.includes(s.id)).map(s => (
-                        <div 
-                          key={s.id} 
-                          onClick={() => {
-                            setSelectedStation(s);
-                            setActiveTab('station-detail');
-                            fetchStationData(s.id);
-                          }}
-                          className="p-4 bg-white border border-slate-200 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all shadow-sm cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-rose-50 rounded-xl text-rose-500 border border-rose-100 group-hover:bg-emerald-50 group-hover:text-emerald-600 group-hover:border-emerald-100 transition-colors">
-                              <MapPin className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900 text-sm group-hover:text-emerald-600 transition-colors">{s.name_cn}</p>
-                              <p className="text-[10px] text-slate-500 font-medium">{s.network_name_cn}</p>
-                            </div>
-                          </div>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setFavorites(prev => prev.filter(id => id !== s.id));
-                            }}
-                            className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          >
-                            <Heart className="w-4 h-4 fill-current" />
-                          </button>
-                        </div>
-                      ))
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="p-4 w-12 text-center">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedFavoriteIds(favorites);
+                                  } else {
+                                    setSelectedFavoriteIds([]);
+                                  }
+                                }}
+                              />
+                            </th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">站点信息</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">所属网络</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {stations.filter(s => favorites.includes(s.id)).map(s => (
+                            <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
+                              <td className="p-4 text-center">
+                                <input 
+                                  type="checkbox" 
+                                  className="rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                                  checked={selectedFavoriteIds.includes(s.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedFavoriteIds(prev => [...prev, s.id]);
+                                    } else {
+                                      setSelectedFavoriteIds(prev => prev.filter(id => id !== s.id));
+                                    }
+                                  }}
+                                />
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => {
+                                  setSelectedStation(s);
+                                  setActiveTab('station-detail');
+                                  fetchStationData(s.id);
+                                }}>
+                                  <div className="p-2 bg-rose-50 rounded-lg text-rose-500">
+                                    <MapPin className="w-4 h-4" />
+                                  </div>
+                                  <span className="font-bold text-slate-900 text-sm group-hover:text-emerald-600 transition-colors">{s.name_cn}</span>
+                                </div>
+                              </td>
+                              <td className="p-4 text-xs font-medium text-slate-600">{s.network_name_cn}</td>
+                              <td className="p-4 text-right">
+                                <button 
+                                  onClick={() => setFavorites(prev => prev.filter(id => id !== s.id))}
+                                  className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                >
+                                  <Heart className="w-4 h-4 fill-current" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 </div>
@@ -1961,34 +2595,73 @@ export default function App() {
                     <Database className="w-5 h-5 text-emerald-600" />
                     订单管理
                   </h3>
-                  <div className="space-y-4">
+                  <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
                     {purchasedData.length === 0 ? (
-                      <div className="p-12 text-center border border-dashed border-slate-200 rounded-3xl text-slate-400 bg-white">
+                      <div className="p-20 text-center text-slate-400 font-bold">
                         暂无订单记录
                       </div>
                     ) : (
-                      purchasedData.map(p => (
-                        <div key={p.id} className="p-6 bg-white border border-slate-200 rounded-2xl flex items-center justify-between group hover:border-emerald-500/30 transition-all shadow-sm">
-                          <div className="flex items-center gap-4">
-                            <div className="p-3 bg-slate-50 rounded-xl text-emerald-600 border border-slate-100">
-                              <Database className="w-6 h-6" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900">{p.station_name}</p>
-                              <p className="text-xs text-slate-500 font-medium">{p.instrument_name} · {p.data_range}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <div className="text-right">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">购买时间</p>
-                              <p className="text-sm font-bold text-slate-700">{new Date(p.purchase_time).toLocaleDateString()}</p>
-                            </div>
-                            <button className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100">
-                              <Download className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="p-4 w-12 text-center">
+                              <input 
+                                type="checkbox" 
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedOrderIds(purchasedData.map(p => p.id));
+                                  } else {
+                                    setSelectedOrderIds([]);
+                                  }
+                                }}
+                              />
+                            </th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">站点信息</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">数据范围</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">购买时间</th>
+                            <th className="p-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {purchasedData.map(p => (
+                            <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
+                              <td className="p-4 text-center">
+                                <input 
+                                  type="checkbox" 
+                                  className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                  checked={selectedOrderIds.includes(p.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedOrderIds(prev => [...prev, p.id]);
+                                    } else {
+                                      setSelectedOrderIds(prev => prev.filter(id => id !== p.id));
+                                    }
+                                  }}
+                                />
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
+                                    <Database className="w-4 h-4" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold text-slate-900 text-sm">{p.station_name}</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">{p.instrument_name}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-4 text-xs font-medium text-slate-600">{p.data_range}</td>
+                              <td className="p-4 text-xs font-medium text-slate-500">{new Date(p.purchase_time).toLocaleDateString()}</td>
+                              <td className="p-4 text-right">
+                                <button className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
                   </div>
                 </div>
@@ -2116,6 +2789,10 @@ export default function App() {
     );
   };
 
+  if (!user) {
+    return renderAuthPage();
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
       {/* Top Header */}
@@ -2132,6 +2809,12 @@ export default function App() {
           </div>
         </div>
 
+          <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full shrink-0">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            <p className="text-[10px] font-bold text-emerald-700 whitespace-nowrap">
+              全球活跃站点: <span className="text-emerald-600">{filteredCount}</span>
+            </p>
+          </div>
         <div className="flex-1 max-w-xl mx-8 relative hidden md:flex items-center gap-3">
           <div className="relative">
             <button 
@@ -2240,12 +2923,6 @@ export default function App() {
             </AnimatePresence>
           </div>
 
-          <div className="hidden lg:flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full shrink-0">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <p className="text-[10px] font-bold text-emerald-700 whitespace-nowrap">
-              全球活跃站点: <span className="text-emerald-600">{filteredCount}</span>
-            </p>
-          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -2355,7 +3032,12 @@ export default function App() {
                     </div>
                     <div className="p-2 border-t border-slate-100">
                       <button 
-                        onClick={() => setUser(null)}
+                        onClick={() => {
+                          setUser(null);
+                          setActiveTab('map');
+                          setIsUserMenuOpen(false);
+                          setIsAuthMode('login');
+                        }}
                         className="flex items-center w-full gap-3 px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                       >
                         <LogOut className="w-4 h-4" />
@@ -2749,6 +3431,127 @@ export default function App() {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Photo Preview Modal */}
+      <AnimatePresence>
+        {previewPhoto && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setPreviewPhoto(null)}
+              className="absolute inset-0 bg-slate-900/90 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative max-w-4xl w-full bg-white rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <button 
+                onClick={() => setPreviewPhoto(null)}
+                className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full text-white transition-all z-10"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img src={previewPhoto} alt="Preview" className="w-full h-auto max-h-[80vh] object-contain" referrerPolicy="no-referrer" />
+              <div className="p-6 bg-white flex justify-between items-center">
+                <p className="text-sm font-bold text-slate-900">实名认证资料预览</p>
+                <button 
+                  onClick={() => setPreviewPhoto(null)}
+                  className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold"
+                >
+                  关闭预览
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Grid Modal */}
+      <AnimatePresence>
+        {isAddGridModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddGridModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="relative max-w-md w-full bg-white rounded-[32px] overflow-hidden shadow-2xl"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900">划分新网格</h3>
+                    <p className="text-xs text-slate-400 font-bold mt-1 uppercase tracking-widest">Create New Grid</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsAddGridModalOpen(false)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">网格名称</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如：华东沿海观测网格"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">网格代码</label>
+                    <input 
+                      type="text" 
+                      placeholder="例如：GRID-CN-EC"
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">经度范围</label>
+                      <input type="text" placeholder="110.5 - 122.3" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">纬度范围</label>
+                      <input type="text" placeholder="25.2 - 35.8" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-blue-500" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-10 flex gap-3">
+                  <button 
+                    onClick={() => setIsAddGridModalOpen(false)}
+                    className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all"
+                  >
+                    取消
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsAddGridModalOpen(false);
+                      alert('网格划分成功！');
+                    }}
+                    className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-600/20 hover:bg-blue-500 transition-all"
+                  >
+                    确认划分
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -146,9 +146,14 @@ if (userCount.count === 0) {
       { nid: 1, code: 'AQ-OpenAQ', cn: 'OpenAQ 全球空气质量网', en: 'OpenAQ Global Air Quality', org: 'OpenAQ', share: 'public', count: 15000, params: 'PM2.5, PM10, NO2, O3, CO, SO2, BC' },
       { nid: 1, code: 'AQ-EPA', cn: 'EPA AirNow 美国监测网', en: 'EPA AirNow', org: 'US EPA', share: 'public', count: 3000, params: 'PM2.5, PM10, NO2, O3, CO, SO2' },
       { nid: 1, code: 'AQ-CNEMC', cn: '中国环境监测总站网络', en: 'CNEMC Network', org: '中国环境监测总站', share: 'public', count: 3000, params: 'PM2.5, PM10, O3, NO2, SO2, CO' },
+      { nid: 1, code: 'AQ-EU', cn: '欧盟环境署空气质量网', en: 'EEA Air Quality', org: 'EEA', share: 'public', count: 4500, params: 'PM2.5, PM10, O3, NO2' },
       { nid: 2, code: 'GHG-WDCGG', cn: 'WDCGG 世界温室气体数据中心', en: 'WDCGG', org: 'WMO', share: 'public', count: 544, params: 'CO2, CH4, N2O, SF6, CO' },
       { nid: 2, code: 'GHG-TCCON', cn: 'TCCON 国际合作太阳傅里叶变换光谱观测网', en: 'TCCON', org: 'GCOS', share: 'public', count: 34, params: 'CO2, CH4, N2O, HF, CO, H2O' },
-      { nid: 3, code: 'WQ-CN', cn: '中国国家地表水水质自动监测系统', en: 'China National Surface Water Monitoring', org: '中国环境监测总站', share: 'public', count: 2000, params: '水温, pH, 溶解氧, 电导率, 浊度, 高锰酸盐指数, 氨氮, 总磷, 总氮' }
+      { nid: 2, code: 'GHG-ICOS', cn: 'ICOS 欧洲集成碳观测系统', en: 'ICOS', org: 'ICOS ERIC', share: 'public', count: 140, params: 'CO2, CH4, CO' },
+      { nid: 3, code: 'WQ-CN', cn: '中国国家地表水水质自动监测系统', en: 'China National Surface Water Monitoring', org: '中国环境监测总站', share: 'public', count: 2000, params: '水温, pH, 溶解氧, 电导率, 浊度, 高锰酸盐指数, 氨氮, 总磷, 总氮' },
+      { nid: 3, code: 'WQ-USGS', cn: 'USGS 美国水质监测网', en: 'USGS Water Quality', org: 'USGS', share: 'public', count: 5000, params: 'pH, 溶解氧, 浊度, 硝酸盐' },
+      { nid: 4, code: 'ECO-LTER', cn: 'LTER 长期生态研究网络', en: 'LTER', org: 'NSF', share: 'public', count: 28, params: '生物量, 土壤养分, 气象因子' },
+      { nid: 5, code: 'NOISE-EU', cn: '欧盟城市噪声监测网', en: 'EU Urban Noise', org: 'EEA', share: 'public', count: 1200, params: 'Lden, Lnight' }
     ];
 
     subNetworks.forEach(sn => {
@@ -171,7 +176,19 @@ if (userCount.count === 0) {
       { sub_id: 1, cn: '东京新宿站', en: 'Shinjuku Station', org: 'JMA', lat: 35.689, lng: 139.700 },
       { sub_id: 1, cn: '巴黎埃菲尔站', en: 'Eiffel Tower Station', org: 'Airparif', lat: 48.858, lng: 2.294 },
       { sub_id: 1, cn: '里约热内卢站', en: 'Rio de Janeiro Station', org: 'INEA', lat: -22.906, lng: -43.172 },
-      { sub_id: 1, cn: '内罗毕站', en: 'Nairobi Station', org: 'KMD', lat: -1.292, lng: 36.821 }
+      { sub_id: 1, cn: '内罗毕站', en: 'Nairobi Station', org: 'KMD', lat: -1.292, lng: 36.821 },
+      { sub_id: 6, cn: '杭州西湖站', en: 'West Lake Station', org: '杭州环保局', lat: 30.241, lng: 120.148 },
+      { sub_id: 6, cn: '苏州太湖站', en: 'Taihu Lake Station', org: '江苏环保厅', lat: 31.214, lng: 120.356 },
+      { sub_id: 6, cn: '武汉东湖站', en: 'East Lake Station', org: '武汉水务局', lat: 30.556, lng: 114.389 },
+      { sub_id: 7, cn: '洛杉矶圣莫尼卡站', en: 'Santa Monica Station', org: 'USGS', lat: 34.019, lng: -118.491 },
+      { sub_id: 7, cn: '旧金山金门站', en: 'Golden Gate Station', org: 'USGS', lat: 37.808, lng: -122.475 },
+      { sub_id: 7, cn: '西雅图普吉特湾站', en: 'Puget Sound Station', org: 'USGS', lat: 47.606, lng: -122.332 },
+      { sub_id: 8, cn: '长白山生态站', en: 'Changbai Mountain Station', org: '中科院', lat: 42.402, lng: 128.102 },
+      { sub_id: 8, cn: '西双版纳热带雨林站', en: 'Xishuangbanna Station', org: '中科院', lat: 21.925, lng: 101.258 },
+      { sub_id: 8, cn: '鼎湖山生态站', en: 'Dinghushan Station', org: '中科院', lat: 23.167, lng: 112.533 },
+      { sub_id: 9, cn: '柏林中心噪声站', en: 'Berlin Center Noise', org: 'EEA', lat: 52.520, lng: 13.404 },
+      { sub_id: 9, cn: '巴黎香榭丽舍噪声站', en: 'Paris Champs-Élysées Noise', org: 'Airparif', lat: 48.870, lng: 2.308 },
+      { sub_id: 9, cn: '罗马斗兽场噪声站', en: 'Rome Colosseum Noise', org: 'ISPRA', lat: 41.890, lng: 12.492 }
     ];
 
     sampleStations.forEach(s => {
@@ -184,61 +201,66 @@ if (userCount.count === 0) {
                   );
     });
 
-  // Add sample instruments and historical data
-  const stationCount = db.prepare("SELECT COUNT(*) as count FROM stations").get() as { count: number };
-  for (let i = 1; i <= stationCount.count; i++) {
-    const station = db.prepare("SELECT * FROM stations WHERE id = ?").get(i) as any;
-    const subNet = db.prepare("SELECT * FROM sub_networks WHERE id = ?").get(station.sub_network_id) as any;
-    if (!subNet) continue;
-    
-    const params = (subNet.main_params || '').split(', ').filter(Boolean);
-    const mainParam = params[0] || '未知';
+    // Add sample instruments and historical data
+    const stationCount = db.prepare("SELECT COUNT(*) as count FROM stations").get() as { count: number };
+    for (let i = 1; i <= stationCount.count; i++) {
+      const station = db.prepare("SELECT * FROM stations WHERE id = ?").get(i) as any;
+      const subNet = db.prepare("SELECT * FROM sub_networks WHERE id = ?").get(station.sub_network_id) as any;
+      if (!subNet) continue;
+      
+      const params = (subNet.main_params || '').split(', ').filter(Boolean);
+      const mainParam = params[0] || '未知';
 
-    // Add 2 instruments per station
-    for (let j = 1; j <= 2; j++) {
-      const instCode = `INST-${station.id}-${j}`;
-      db.prepare(`INSERT INTO instruments (station_id, code, name_cn, name_en, principle, brand_model, install_year, admin_contact, update_frequency, params, data_start_time) 
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
-                    i, 
-                    instCode, 
-                    `${mainParam}分析仪 ${j}号`, 
-                    `${mainParam} Analyzer #${j}`, 
-                    '光学吸收法', 
-                    'GVON-X1', 
-                    2022, 
-                    'admin@gvon.org',
-                    '1小时',
-                    subNet.main_params,
-                    '2022-01-01'
-                  );
+      // Add 2 instruments per station
+      for (let j = 1; j <= 2; j++) {
+        const instCode = `INST-${station.id}-${j}`;
+        db.prepare(`INSERT INTO instruments (station_id, code, name_cn, name_en, principle, brand_model, install_year, admin_contact, update_frequency, params, data_start_time) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
+                      i, 
+                      instCode, 
+                      `${mainParam}分析仪 ${j}号`, 
+                      `${mainParam} Analyzer #${j}`, 
+                      '光学吸收法', 
+                      'GVON-X1', 
+                      2022, 
+                      'admin@gvon.org',
+                      '1小时',
+                      subNet.main_params,
+                      '2022-01-01'
+                    );
+      }
+
+      // Add data products for each station
+      const products = [
+        { id: `PROD-${i}-H`, name: '逐小时高精度资料包', range: '最近30天', price: 99.00, type: 'hourly' },
+        { id: `PROD-${i}-D`, name: '逐日统计资料包', range: '最近1年', price: 299.00, type: 'daily' },
+        { id: `PROD-${i}-M`, name: '逐月气候态资料包', range: '历史全量', price: 999.00, type: 'monthly' }
+      ];
+      products.forEach(p => {
+        db.prepare("INSERT INTO data_products (id, station_id, name, time_range, price, type) VALUES (?, ?, ?, ?, ?, ?)").run(p.id, i, p.name, p.range, p.price, p.type);
+      });
+      
+      // Generate 24 hours of mock data for the first instrument
+      const inst = db.prepare("SELECT id FROM instruments WHERE station_id = ? LIMIT 1").get(i) as any;
+      const stmt = db.prepare("INSERT INTO observation_data (instrument_id, timestamp, value, param_name) VALUES (?, ?, ?, ?)");
+      for (let h = 0; h < 24; h++) {
+        const time = new Date();
+        time.setHours(time.getHours() - h);
+        let val = 0;
+        if (mainParam === 'PM2.5') val = 10 + Math.random() * 50;
+        else if (mainParam === 'CO2') val = 400 + Math.random() * 20;
+        else if (mainParam === '水温') val = 15 + Math.random() * 10;
+        else val = Math.random() * 100;
+
+        stmt.run(inst.id, time.toISOString(), val, mainParam);
+      }
     }
 
-    // Add data products for each station
-    const products = [
-      { id: `PROD-${i}-H`, name: '逐小时高精度资料包', range: '最近30天', price: 99.00, type: 'hourly' },
-      { id: `PROD-${i}-D`, name: '逐日统计资料包', range: '最近1年', price: 299.00, type: 'daily' },
-      { id: `PROD-${i}-M`, name: '逐月气候态资料包', range: '历史全量', price: 999.00, type: 'monthly' }
-    ];
-    products.forEach(p => {
-      db.prepare("INSERT INTO data_products (id, station_id, name, time_range, price, type) VALUES (?, ?, ?, ?, ?, ?)").run(p.id, i, p.name, p.range, p.price, p.type);
-    });
-    
-    // Generate 24 hours of mock data for the first instrument
-    const inst = db.prepare("SELECT id FROM instruments WHERE station_id = ? LIMIT 1").get(i) as any;
-    const stmt = db.prepare("INSERT INTO observation_data (instrument_id, timestamp, value, param_name) VALUES (?, ?, ?, ?)");
-    for (let h = 0; h < 24; h++) {
-      const time = new Date();
-      time.setHours(time.getHours() - h);
-      let val = 0;
-      if (mainParam === 'PM2.5') val = 10 + Math.random() * 50;
-      else if (mainParam === 'CO2') val = 400 + Math.random() * 20;
-      else if (mainParam === '水温') val = 15 + Math.random() * 10;
-      else val = Math.random() * 100;
-
-      stmt.run(inst.id, time.toISOString(), val, mainParam);
-    }
+    // Add some initial purchased data for admin (user_id: 1)
+    db.prepare(`INSERT INTO purchased_data (user_id, station_id, instrument_id, data_range, price) VALUES (?, ?, ?, ?, ?)`).run(1, 1, 1, '逐小时高精度资料包 (2024-01)', 99.00);
+    db.prepare(`INSERT INTO purchased_data (user_id, station_id, instrument_id, data_range, price) VALUES (?, ?, ?, ?, ?)`).run(1, 2, 3, '逐日统计资料包 (2023)', 299.00);
+    db.prepare(`INSERT INTO purchased_data (user_id, station_id, instrument_id, data_range, price) VALUES (?, ?, ?, ?, ?)`).run(1, 4, 7, '历史全量温室气体数据', 999.00);
   }
-}
 
 async function startServer() {
   const app = express();
